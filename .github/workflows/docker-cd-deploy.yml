@@ -1,0 +1,174 @@
+name: Docker CD Deploy
+
+on:
+  workflow_run:
+    workflows:
+      - Docker CI Build
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    environment: ${{ vars.DEPLOY_ENVIRONMENT || 'PROD' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Compute image coordinates
+        id: image
+        shell: bash
+        run: |
+          echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || (github.event.inputs.image_tag || 'latest') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate required settings
+        shell: bash
+        run: |
+          missing=0
+
+          check_var() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::Missing variable: $name"
+              missing=1
+            fi
+          }
+
+          check_secret() {
+            local name="$1"
+            local value="$2"
+            if [ -z "$value" ]; then
+              echo "::error::Missing secret: $name"
+              missing=1
+            fi
+          }
+
+          check_var "DEPLOY_HOST" "${{ vars.DEPLOY_HOST }}"
+          check_var "DEPLOY_USER" "${{ vars.DEPLOY_USER }}"
+          check_var "DEPLOY_PATH" "${{ vars.DEPLOY_PATH }}"
+          check_var "DATABASE_URL" "${{ vars.DATABASE_URL }}"
+          check_var "NEXTAUTH_URL" "${{ vars.NEXTAUTH_URL }}"
+
+          check_secret "NEXTAUTH_SECRET" "${{ secrets.NEXTAUTH_SECRET }}"
+          check_secret "GHCR_USERNAME" "${{ secrets.GHCR_USERNAME }}"
+          check_secret "GHCR_TOKEN" "${{ secrets.GHCR_TOKEN }}"
+          check_secret "AI_API_KEY" "${{ secrets.AI_API_KEY }}"
+          check_secret "DEEPGRAM_API_KEY" "${{ secrets.DEEPGRAM_API_KEY }}"
+
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Validate SSH key secret
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ] && [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::error::Missing SSH key secret. Add DEPLOY_SSH_KEY (recommended) or SSH_PRIVATE_KEY in repository secrets."
+            exit 1
+          fi
+
+      - name: Validate SSH key is non-passphrase
+        shell: bash
+        env:
+          SSH_KEY_CONTENT: ${{ secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+        run: |
+          key_file="$(mktemp)"
+          chmod 600 "$key_file"
+          printf '%s\n' "$SSH_KEY_CONTENT" > "$key_file"
+
+          if ! ssh-keygen -y -P "" -f "$key_file" >/dev/null 2>&1; then
+            echo "::error::DEPLOY_SSH_KEY is passphrase-protected or invalid. Use a non-passphrase deploy key for GitHub Actions."
+            rm -f "$key_file"
+            exit 1
+          fi
+
+          rm -f "$key_file"
+
+      - name: Validate GHCR credentials
+        shell: bash
+        run: |
+          if ! echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin >/dev/null 2>&1; then
+            echo "::error::GHCR login failed. Verify GHCR_USERNAME/GHCR_TOKEN and package access permissions."
+            exit 1
+          fi
+          docker logout ghcr.io >/dev/null 2>&1 || true
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY != '' && secrets.DEPLOY_SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add deploy host to known_hosts
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ vars.DEPLOY_PORT || '22' }}" "${{ vars.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Prepare runtime env file
+        shell: bash
+        run: |
+          cat > .env.production <<EOF
+          IMAGE_NAME=${{ steps.image.outputs.name }}
+          IMAGE_TAG=${{ steps.image.outputs.tag }}
+          APP_PORT=${{ vars.APP_PORT || '3000' }}
+          DATABASE_URL=${{ vars.DATABASE_URL }}
+          NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL=${{ vars.NEXTAUTH_URL }}
+          NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL || vars.NEXTAUTH_URL }}
+          AI_BASE_URL=${{ vars.AI_BASE_URL || 'https://api.openai.com' }}
+          AI_API_KEY=${{ secrets.AI_API_KEY }}
+          AI_MODEL=${{ vars.AI_MODEL || 'gpt-4o' }}
+          DEEPGRAM_API_KEY=${{ secrets.DEEPGRAM_API_KEY }}
+          TTS_PROVIDER=${{ vars.TTS_PROVIDER || 'deepgram' }}
+          EDGE_TTS_VOICE=${{ vars.EDGE_TTS_VOICE || 'en-IN-NeerjaNeural' }}
+          EDGE_TTS_RATE=${{ vars.EDGE_TTS_RATE || '+10%' }}
+          STT_PROVIDER=${{ vars.STT_PROVIDER || 'deepgram' }}
+          STT_LANGUAGE=${{ vars.STT_LANGUAGE || 'en-IN' }}
+          MAX_PROCTORING_STRIKES=${{ vars.MAX_PROCTORING_STRIKES || '20' }}
+          NEXT_PUBLIC_MAX_PROCTORING_STRIKES=${{ vars.NEXT_PUBLIC_MAX_PROCTORING_STRIKES || '20' }}
+          HEARTBEAT_STALE_MS=${{ vars.HEARTBEAT_STALE_MS || '180000' }}
+          SILENCE_DELAY_MS=${{ vars.SILENCE_DELAY_MS || '3000' }}
+          SMTP_HOST=${{ vars.SMTP_HOST }}
+          SMTP_PORT=${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER=${{ vars.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ vars.SMTP_FROM }}
+          NODE_TLS_REJECT_UNAUTHORIZED=${{ vars.NODE_TLS_REJECT_UNAUTHORIZED || '1' }}
+          EOF
+
+      - name: Upload deploy files
+        shell: bash
+        run: |
+          ssh -p "${{ vars.DEPLOY_PORT || '22' }}" "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}" "mkdir -p '${{ vars.DEPLOY_PATH }}'"
+          scp -P "${{ vars.DEPLOY_PORT || '22' }}" docker-compose.yml .env.production "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.DEPLOY_PATH }}/"
+
+      - name: Deploy on target host
+        shell: bash
+        run: |
+          ssh -p "${{ vars.DEPLOY_PORT || '22' }}" "${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}" '
+            set -e
+            cd "${{ vars.DEPLOY_PATH }}"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            docker compose --env-file .env.production pull
+            docker compose --env-file .env.production up -d
+            docker image prune -f
+          '

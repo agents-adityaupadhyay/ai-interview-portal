@@ -1,0 +1,86 @@
+name: ai-interview-platform
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_interview_platform}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      # Applied in filename order on FIRST start only (empty pg_data volume)
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ${IMAGE_NAME:-ai-interview-platform}:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ai_interview_platform}}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com}
+      AI_API_KEY: ${AI_API_KEY:?AI_API_KEY is required}
+      AI_MODEL: ${AI_MODEL:-gpt-4o}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-}
+      VIDEO_RECORDING: ${VIDEO_RECORDING:-off}
+      SUMMARY_AI_BASE_URL: ${SUMMARY_AI_BASE_URL:-}
+      SUMMARY_AI_API_KEY: ${SUMMARY_AI_API_KEY:-}
+      SUMMARY_AI_MODEL: ${SUMMARY_AI_MODEL:-}
+      STT_CLIENT_PROVIDERS: ${STT_CLIENT_PROVIDERS:-deepgram,browser}
+      SONIOX_API_KEY: ${SONIOX_API_KEY:-}
+      SARVAM_API_KEY: ${SARVAM_API_KEY:-}
+      SARVAM_LANGUAGE: ${SARVAM_LANGUAGE:-en-IN}
+      SARVAM_SPEAKER: ${SARVAM_SPEAKER:-priya}
+      SARVAM_PACE: ${SARVAM_PACE:-1.2}
+      CARTESIA_API_KEY: ${CARTESIA_API_KEY:-}
+      CARTESIA_VOICE_ID: ${CARTESIA_VOICE_ID:-f6141af3-5f94-418c-80ed-a45d450e7e2e}
+      CARTESIA_MODEL: ${CARTESIA_MODEL:-sonic-2}
+      CARTESIA_SPEED: ${CARTESIA_SPEED:-1.0}
+      CARTESIA_LANGUAGE: ${CARTESIA_LANGUAGE:-en}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-2BJW5coyhAzSr8STdHbE}
+      ELEVENLABS_MODEL: ${ELEVENLABS_MODEL:-eleven_turbo_v2_5}
+      ELEVENLABS_STABILITY: ${ELEVENLABS_STABILITY:-0.5}
+      ELEVENLABS_SIMILARITY: ${ELEVENLABS_SIMILARITY:-0.75}
+      ELEVENLABS_SPEED: ${ELEVENLABS_SPEED:-1.0}
+      ELEVENLABS_MAX_CONCURRENT: ${ELEVENLABS_MAX_CONCURRENT:-4}
+      TTS_PROVIDER: ${TTS_PROVIDER:-deepgram}
+      EDGE_TTS_VOICE: ${EDGE_TTS_VOICE:-en-IN-NeerjaNeural}
+      EDGE_TTS_RATE: ${EDGE_TTS_RATE:-+10%}
+      STT_PROVIDER: ${STT_PROVIDER:-deepgram}
+      STT_LANGUAGE: ${STT_LANGUAGE:-en-IN}
+      MAX_PROCTORING_STRIKES: ${MAX_PROCTORING_STRIKES:-20}
+      NEXT_PUBLIC_MAX_PROCTORING_STRIKES: ${NEXT_PUBLIC_MAX_PROCTORING_STRIKES:-20}
+      HEARTBEAT_STALE_MS: ${HEARTBEAT_STALE_MS:-180000}
+      SILENCE_DELAY_MS: ${SILENCE_DELAY_MS:-3000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      NODE_TLS_REJECT_UNAUTHORIZED: ${NODE_TLS_REJECT_UNAUTHORIZED:-1}
+    volumes:
+      - app_data:/app/data
+
+volumes:
+  app_data:
+  pg_data:

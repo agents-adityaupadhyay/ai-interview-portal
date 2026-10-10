@@ -21,13 +21,41 @@
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-<p align="center">
-  <img src="docs/flow.svg" alt="Interview flow" width="100%" />
-</p>
+## How it works
 
-## What it does
+```mermaid
+flowchart LR
+    subgraph setup["1 · Set up"]
+        direction TB
+        A["Recruiter creates interview<br/>role · level · resume · questions"] --> B["Candidate gets a<br/>private link by email"]
+    end
 
-A recruiter creates an interview, uploads the candidate's resume and sends a link. The candidate joins in the browser and talks to an AI interviewer that asks questions, follows up on answers and adapts to the role and seniority. When the interview ends, the platform writes a scorecard with evidence quoted from the transcript and a hire / no-hire recommendation.
+    subgraph live["2 · Live interview"]
+        direction TB
+        C["Candidate joins<br/>camera · mic · screen share"] --> D(("Candidate<br/>speaks"))
+        D -- "speech-to-text" --> E["AI interviewer<br/>picks the next question"]
+        E -- "text-to-speech" --> F(("Interviewer<br/>replies"))
+        F -. "next turn" .-> D
+        P["Proctoring<br/>face · gaze · tab switches"] -. "strikes" .-> E
+    end
+
+    subgraph review["3 · Review"]
+        direction TB
+        G["Scorecard written<br/>in the background"] --> H["Recruiter reviews<br/>scores · evidence · transcript · video"]
+    end
+
+    setup --> live --> review
+```
+
+| Phase | What happens |
+|-------|--------------|
+| **1 · Set up** | The recruiter picks the role, seniority and duration, attaches the resume and optional question bank. The candidate receives a private link. |
+| **2 · Live interview** | The candidate talks to the AI in the browser. Each answer is transcribed, the AI decides what to ask or follow up on, and the reply is spoken back sentence by sentence. Proctoring runs throughout and the server counts strikes. |
+| **3 · Review** | When the AI wraps up, time runs out, someone ends the call or the strike limit is reached, a scorecard is generated with quotes from the transcript as evidence, then shown on the dashboard with the proctoring timeline and recording. |
+
+For the technical view, see [Architecture](docs/architecture.md).
+
+## Features
 
 | Interview | Integrity | Review |
 |-----------|-----------|--------|

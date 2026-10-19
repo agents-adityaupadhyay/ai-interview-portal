@@ -55,6 +55,12 @@ parameters:
   - name: AI_MODEL
     description: AI model name.
     value: gpt-4o
+  - name: AGENT_CHAT
+    description: Recruiter AI assistant (on/off). Needs migrations/003_agent_chat.sql.
+    value: "off"
+  - name: AGENT_FEATURES
+    description: Assistant feature ids, comma-separated; empty for all.
+    value: ""
   - name: TTS_PROVIDER
     description: TTS provider name.
     value: deepgram
@@ -129,6 +135,8 @@ objects:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       AI_BASE_URL: ${AI_BASE_URL}
       AI_MODEL: ${AI_MODEL}
+      AGENT_CHAT: ${AGENT_CHAT}
+      AGENT_FEATURES: ${AGENT_FEATURES}
       TTS_PROVIDER: ${TTS_PROVIDER}
       EDGE_TTS_VOICE: ${EDGE_TTS_VOICE}
       EDGE_TTS_RATE: ${EDGE_TTS_RATE}

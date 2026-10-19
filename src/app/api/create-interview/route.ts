@@ -6,22 +6,7 @@ import { saveInterview, Interview } from "@/lib/store";
 import { sendInterviewInvite } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 import { pool } from "@/lib/db";
-import mammoth from "mammoth";
-
-async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  try {
-    // Use lib/pdf-parse.js directly to skip the buggy index.js
-    // (index.js has a debug mode that reads a test file on require())
-    const pdfParse = require("pdf-parse/lib/pdf-parse.js");
-    const data = await pdfParse(buffer);
-    const text = data.text?.trim() || "";
-    console.log(`PDF parsed: ${text.length} chars`);
-    return text || "Resume provided but could not be parsed. Proceed with general interview questions.";
-  } catch (err) {
-    console.error("PDF parse failed:", err);
-    return "Resume provided but could not be parsed. Proceed with general interview questions.";
-  }
-}
+import { extractResumeText } from "@/lib/resume-text";
 
 export async function POST(req: Request) {
   try {
@@ -70,15 +55,7 @@ export async function POST(req: Request) {
       const arrayBuffer = await resumeFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       resumeFileName = resumeFile.name;
-
-      if (resumeFile.name.toLowerCase().endsWith(".pdf")) {
-        resumeText = await extractTextFromPDF(buffer);
-      } else if (resumeFile.name.toLowerCase().endsWith(".docx")) {
-        const result = await mammoth.extractRawText({ buffer });
-        resumeText = result.value;
-      } else {
-        resumeText = buffer.toString("utf-8");
-      }
+      resumeText = await extractResumeText(buffer, resumeFile.name);
 
       console.log(`Resume parsed: ${resumeFileName}, text length: ${resumeText.length}`);
     }

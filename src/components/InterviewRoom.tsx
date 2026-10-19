@@ -174,6 +174,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
   const [cameraReady, setCameraReady] = useState(false);
   const [micReady, setMicReady] = useState(false);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const audioLevelRef = useRef(0);
 
   // Refs
@@ -576,6 +577,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
       const audioBlob = new Blob([audioBytes], { type: data.contentType || "audio/mpeg" });
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      (window as any).__recordAIAudio?.(audio);
       currentAudioRef.current = audio;
       await new Promise<void>((resolve, reject) => {
         audio.onended = () => {
@@ -659,6 +661,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
               const audioBlob = new Blob([audioBytes], { type: data.contentType || "audio/mpeg" });
               const audioUrl = URL.createObjectURL(audioBlob);
               const audio = new Audio(audioUrl);
+              (window as any).__recordAIAudio?.(audio);
               currentAudioRef.current = audio;
               setIsAISpeaking(true); isAISpeakingRef.current = true; setCurrentAIText(data.text);
               await new Promise<void>((resolve) => {
@@ -697,6 +700,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
             const audioBlob = new Blob([audioBytes], { type: chunk.contentType || "audio/mpeg" });
             const audioUrl = URL.createObjectURL(audioBlob);
             const audio = new Audio(audioUrl);
+            (window as any).__recordAIAudio?.(audio);
             currentAudioRef.current = audio;
             if (!isAISpeakingRef.current) { setIsAISpeaking(true); isAISpeakingRef.current = true; setIsAIThinking(false); }
             await new Promise<void>((resolve) => {
@@ -1359,6 +1363,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
                         onProctoringEvent({ type: "screen_share_stopped", severity: "flag", message: "Candidate stopped screen sharing" });
                       }
                     };
+                    setScreenStream(screenStream);
                     setScreenSharing(true);
                   } catch (err) {
                     console.error("Screen share denied:", err);
@@ -1819,6 +1824,7 @@ export function InterviewRoom({ interviewId }: { interviewId: string }) {
         interviewId={interviewId}
         token={tokenRef.current}
         mediaStream={mediaStream}
+        screenStream={screenStream}
         enabled={isStarted}
       />
 

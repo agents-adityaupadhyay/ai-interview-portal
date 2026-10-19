@@ -68,9 +68,25 @@ Useful Indian English voices for Edge: `en-IN-NeerjaNeural` (female), `en-IN-Nee
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `VIDEO_RECORDING` | `off` | `on` records the candidate's camera and microphone |
+| `VIDEO_RECORDING` | `off` | `on` records the interview: the shared screen with the camera in a corner box, with the candidate's microphone and the AI interviewer's voice |
 
-Recording uses WebM, so it works in Chrome, Edge and Firefox but not Safari. Files are stored under `data/recordings/video/<interviewId>/`; give the container a persistent volume for `data/`. Recordings are not deleted automatically.
+Recording uses WebM, so it works in Chrome, Edge and Firefox but not Safari. The video is 1280×720 at about 1.2 Mbps (roughly 550 MB per hour). On mobile, where there is no screen share, the camera fills the frame. If the browser cannot composite, it falls back to recording the camera and microphone only. Files are stored under `data/recordings/video/<interviewId>/`; give the container a persistent volume for `data/`. Recordings are not deleted automatically.
+
+## AI assistant
+
+The recruiter Hiring Assistant (Ask AI in the sidebar). See [AI assistant](ai-assistant.md) for what it can do. It needs `migrations/003_agent_chat.sql`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AGENT_CHAT` | `off` | `on` shows the assistant on recruiter pages |
+| `AGENT_FEATURES` | all | Comma-separated feature ids to enable: `interviews`, `question-banks`, `resume-screening`, `interview-creation` |
+| `AGENT_AI_BASE_URL`, `AGENT_AI_API_KEY`, `AGENT_AI_MODEL` | `AI_*` values | Optional separate model for the assistant. It must support tool (function) calling well, e.g. `gpt-4o`. Same no-`/v1` rule as `AI_BASE_URL` |
+| `AGENT_MAX_STEPS` | `12` | Model calls per reply (each tool round trip is one) |
+| `AGENT_HISTORY_TOKEN_BUDGET` | `60000` | Approximate conversation history kept per reply; older turns are dropped |
+| `AGENT_TOOL_TIMEOUT_MS` | `30000` | Time limit for one tool call |
+| `AGENT_APP_BASE_URL` | `http://127.0.0.1:$PORT` | Where the assistant calls the app's own API. Change only if the app is not reachable on loopback |
+
+Behind a reverse proxy, turn off response buffering for `/api/agent/chat` (nginx: `proxy_buffering off;`) so replies stream.
 
 ## Email
 

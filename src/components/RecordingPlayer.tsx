@@ -24,14 +24,14 @@ export function RecordingPlayer({ interviewId }: { interviewId: string }) {
   return (
     <div className="card p-6 animate-fade-in-right delay-3">
       <h2 className="text-sm font-semibold text-gray-900 mb-1">Interview Recording</h2>
-      <p className="text-xs text-gray-500 mb-3">Candidate camera and microphone recorded during the interview</p>
+      <p className="text-xs text-gray-500 mb-3">Shared screen with the candidate's camera, and both sides of the conversation</p>
       <video
         key={current.part}
         controls
         autoPlay={index > 0}
         preload="metadata"
         playsInline
-        className="w-full rounded-lg bg-black aspect-[4/3]"
+        className="w-full h-auto max-h-[70vh] rounded-lg bg-black"
         src={`/api/recording/${interviewId}/video?part=${current.part}`}
         onEnded={() => setIndex((i) => (i + 1 < parts.length ? i + 1 : i))}
       />

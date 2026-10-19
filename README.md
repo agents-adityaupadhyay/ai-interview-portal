@@ -85,6 +85,7 @@ Open http://localhost:3000. This starts the app plus a bundled Postgres with the
 | [Getting started](docs/getting-started.md) | Local setup, database, first admin account |
 | [Configuration](docs/configuration.md) | Every environment variable, AI models, voice and speech providers |
 | [Architecture](docs/architecture.md) | How the pieces fit together, interview lifecycle, security model |
+| [AI assistant](docs/ai-assistant.md) | Recruiter chat agent: features, approvals, adding capabilities, milestones |
 | [API reference](docs/api.md) | Pages and API routes |
 | [Deploy with GitHub Actions](docs/deployment/github-actions.md) | CI image build to GHCR and SSH deploy to a Docker host |
 | [Deploy to OpenShift](docs/deployment/openshift.md) | Template-based deploy with `oc` |

@@ -107,13 +107,13 @@ function RadarChart({ candidates }: { candidates: { label: string; scores: { dim
             return `${p.x},${p.y}`;
           }).join(" ")}
           fill="none"
-          stroke="#e5e7eb"
+          stroke="currentColor" className="text-gray-200"
           strokeWidth="1"
         />
       ))}
       {dimensions.map((_, i) => {
         const p = getPoint(i, 5);
-        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="#e5e7eb" strokeWidth="1" />;
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="currentColor" className="text-gray-200" strokeWidth="1" />;
       })}
       {candidates.map((cand, ci) => (
         <polygon
@@ -621,7 +621,7 @@ export default function ComparePage() {
                                 <div className="flex items-center gap-2">
                                   <div className="relative w-8 h-8">
                                     <svg className="w-8 h-8 -rotate-90" viewBox="0 0 36 36">
-                                      <circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" strokeWidth="3" />
+                                      <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" className="text-gray-200" strokeWidth="3" />
                                       <circle cx="18" cy="18" r="14" fill="none"
                                         stroke={scoreBg(interview.scorecard.overall)}
                                         strokeWidth="3" strokeLinecap="round"

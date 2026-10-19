@@ -215,7 +215,7 @@ export default function InterviewDetailPage({ params }: { params: { id: string }
               <div className="text-center flex flex-col items-end gap-2">
                 <div className="relative w-14 h-14">
                   <svg className="w-14 h-14 -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="14" fill="none" stroke="#e5e7eb" strokeWidth="2.5" />
+                    <circle cx="18" cy="18" r="14" fill="none" stroke="currentColor" className="text-gray-200" strokeWidth="2.5" />
                     <circle cx="18" cy="18" r="14" fill="none"
                       stroke={interview.scorecard.overall >= 3.5 ? "#22c55e" : interview.scorecard.overall >= 2.5 ? "#f59e0b" : "#ef4444"}
                       strokeWidth="2.5" strokeLinecap="round"

@@ -1,11 +1,9 @@
 import type { Interview, TranscriptEntry } from "./store";
 import { DEFAULT_AI_SETTINGS, AISettings, getOrgAISettings } from "./ai-settings";
+import { jsonrepair } from "jsonrepair";
 
-export function stripThinking(text: string): string {
-  // This model (kimi/Open-Thinking) dumps reasoning into content.
-  // Pattern: reasoning block (multi-paragraph), then the actual spoken response.
-  // The actual response is usually the LAST paragraph that sounds like speech.
-
+/** Removes leaked <think>-style reasoning blocks only; keeps markdown intact. */
+export function stripThinkingTags(text: string): string {
   let cleaned = text.trim();
 
   // Remove XML thinking tags (paired and unpaired)
@@ -15,6 +13,15 @@ export function stripThinking(text: string): string {
   cleaned = cleaned.replace(/<\/(?:think|thinking|reasoning|thought)>/gi, "");
   // Remove everything before a closing think tag (content starts after it)
   cleaned = cleaned.replace(/^[\s\S]*?<\/(?:think|thinking|reasoning|thought)>\s*/i, "");
+  return cleaned.trim();
+}
+
+export function stripThinking(text: string): string {
+  // This model (kimi/Open-Thinking) dumps reasoning into content.
+  // Pattern: reasoning block (multi-paragraph), then the actual spoken response.
+  // The actual response is usually the LAST paragraph that sounds like speech.
+
+  let cleaned = stripThinkingTags(text);
 
   // First check if response has obvious thinking markers
   const hasThinkingMarkers = /<think|^\d+\.\s*(NOT|I'm |First|Then)/mi.test(cleaned);
@@ -279,7 +286,8 @@ async function callAI(
   config: AIConfig,
   messages: { role: string; content: string }[],
   maxTokens: number,
-  temperature: number
+  temperature: number,
+  clean: (text: string) => string = stripThinking
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -305,7 +313,7 @@ async function callAI(
 
   const data = await res.json();
   const content = data.choices?.[0]?.message?.content || "";
-  return stripThinking(content);
+  return clean(content);
 }
 
 /** Interview conversation turn — fast, short, uses chat model. */
@@ -517,4 +525,132 @@ Respond with ONLY valid JSON (do NOT include overall or recommendation — syste
 }`;
 
   return callSummaryAI([{ role: "system", content: scorecardPrompt }], 5500, 0.3);
+}
+
+/**
+ * Model answer for a question-bank question (the "show answer" study aid on
+ * /questions). Long-form, so it uses the summary model. Returns markdown.
+ */
+export async function generateModelAnswer(opts: {
+  question: string;
+  role?: string;
+  level?: string;
+  roundType?: string;
+}): Promise<string> {
+  const { question, role, level, roundType } = opts;
+  const system = `You are a senior hiring manager writing the model answer for an interview question, the way a high-quality course explains a solution.
+
+Context: ${roundType || "General"} round for a ${level || ""} ${role || "candidate"}.
+
+Write in GitHub-flavoured markdown with exactly these sections:
+## Short answer
+2-4 sentences a strong candidate would open with.
+## Detailed explanation
+The full reasoning. Use bullet points, and for coding or system-design questions include a concise code block, approach or diagram-in-words, plus time/space complexity or trade-offs where relevant.
+## What interviewers look for
+3-5 bullets on signals of a strong answer.
+## Common mistakes
+2-4 bullets.
+
+Be accurate and specific; if the question is ambiguous, state the assumption you make. Do not repeat the question. Keep it under 450 words.
+Formatting rules: flat bullet or numbered lists only (no nested lists), no LaTeX or $...$ math (write formulas in plain text or inside a code block), no tables wider than 3 columns.`;
+
+  // Markdown is the point here, so only strip reasoning tags (stripThinking
+  // removes headings/bold for speech).
+  return callAI(
+    getSummaryConfig(),
+    [
+      { role: "system", content: system },
+      { role: "user", content: question },
+    ],
+    1600,
+    0.4,
+    stripThinkingTags
+  );
+}
+
+export interface GeneratedQuestionBank {
+  name: string;
+  role: string;
+  level: string;
+  questions: string[];
+}
+
+/**
+ * Drafts question-bank questions from a job description (the "generate from
+ * JD" helper on /questions). The recruiter reviews them before saving.
+ */
+export async function generateQuestionsFromJD(opts: {
+  jobDescription: string;
+  role?: string;
+  level?: string;
+  roundType?: string;
+  count: number;
+  focus?: string;
+  existing?: string[];
+}): Promise<GeneratedQuestionBank> {
+  const { jobDescription, role, level, roundType, count, focus, existing = [] } = opts;
+  const avoid = existing.length
+    ? `\n\nThe bank already has these questions; do not repeat or closely paraphrase them:\n${existing.slice(0, 40).map((q, i) => `${i + 1}. ${q.slice(0, 200)}`).join("\n")}`
+    : "";
+  const system = `You are a senior hiring manager building an interview question bank from a job description.
+
+Round type: ${roundType || "Technical"}${role ? `\nRole: ${role}` : ""}${level ? `\nLevel: ${level}` : ""}${focus ? `\nRecruiter's focus: ${focus}` : ""}
+
+Write exactly ${count} interview questions that:
+- test the specific skills, tools, responsibilities and seniority in the JD (not generic trivia);
+- fit the round type (e.g. Behavioral = past-behaviour STAR prompts, System Design = open design problems, Coding = concrete problems with input/output, HR = motivation/fit);
+- go from foundational to advanced, each answerable in 3-8 minutes;
+- are self-contained and can be asked verbatim. A question may span a few lines (e.g. a short scenario), but no answers or hints.${avoid}
+
+Respond with ONLY valid JSON, no markdown fences:
+{"name": "<short bank name, e.g. 'Senior Backend – Technical'>", "role": "<role title from the JD>", "level": "<one of Junior, Mid, Senior, Staff, Principal>", "questions": ["<question>", "..."]}`;
+
+  const raw = await callAI(
+    getSummaryConfig(),
+    [
+      { role: "system", content: system },
+      { role: "user", content: `Job description:\n"""\n${jobDescription}\n"""` },
+    ],
+    Math.min(4000, 400 + count * 180),
+    0.5,
+    stripThinkingTags
+  );
+  return parseGeneratedBank(raw);
+}
+
+function parseGeneratedBank(raw: string): GeneratedQuestionBank {
+  // jsonrepair fixes trailing commas, unquoted keys and similar LLM slips.
+  const text = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  let data: any = null;
+  if (start !== -1 && end > start) {
+    try {
+      data = JSON.parse(jsonrepair(text.slice(start, end + 1)));
+    } catch {
+      data = null;
+    }
+  }
+  let questions: string[] = [];
+  if (data && Array.isArray(data.questions)) {
+    questions = data.questions.filter((q: unknown) => typeof q === "string");
+  } else {
+    // Fall back to a numbered/bulleted list if the model ignored the JSON format.
+    questions = text
+      .split(/\n+/)
+      .map((l) => l.replace(/^\s*(?:\d+[.)]|[-*•])\s+/, "").trim())
+      .filter((l) => l.length > 15 && /[?.]$/.test(l));
+  }
+  const clean = questions
+    .map((q) => q.trim())
+    .filter(Boolean)
+    .filter((q, i, arr) => arr.findIndex((x) => x.toLowerCase() === q.toLowerCase()) === i);
+  if (clean.length === 0) throw new Error("AI returned no usable questions");
+  return {
+    name: typeof data?.name === "string" ? data.name.trim().slice(0, 120) : "",
+    role: typeof data?.role === "string" ? data.role.trim().slice(0, 120) : "",
+    level: typeof data?.level === "string" ? data.level.trim() : "",
+    questions: clean,
+  };
 }

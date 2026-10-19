@@ -22,7 +22,7 @@ export default function CompletedPage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Confetti-like celebration dots */}
       {showConfetti && (
         <div className="absolute inset-0 pointer-events-none">

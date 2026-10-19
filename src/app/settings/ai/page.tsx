@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 type AISettings = any;
@@ -30,18 +30,18 @@ export default function AISettingsPage() {
     });
   }, [status, session, isAdmin, router]);
 
-  if (status === "loading") return <div className="flex min-h-screen"><Sidebar /><div className="flex-1 p-8">Loading...</div></div>;
+  if (status === "loading") return <DashboardLayout><div className="max-w-4xl mx-auto space-y-4" aria-busy="true"><div className="skeleton h-8 w-72" /><div className="skeleton h-40 w-full" /></div></DashboardLayout>;
   if (!isAdmin) return (
-    <div className="flex min-h-screen bg-gray-50"><Sidebar />
-      <div className="flex-1 p-8 max-w-4xl mx-auto">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
           <h1 className="text-xl font-semibold text-amber-900 mb-2">Admin access required</h1>
           <p className="text-sm text-amber-700">AI settings can only be modified by organization administrators.</p>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
-  if (!settings) return <div className="flex min-h-screen"><Sidebar /><div className="flex-1 p-8">Loading...</div></div>;
+  if (!settings) return <DashboardLayout><div className="max-w-4xl mx-auto space-y-4" aria-busy="true"><div className="skeleton h-8 w-72" /><div className="skeleton h-40 w-full" /></div></DashboardLayout>;
 
   const update = (path: string, value: any) => {
     const keys = path.split(".");
@@ -80,9 +80,8 @@ export default function AISettingsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 p-8 max-w-4xl mx-auto">
+    <DashboardLayout>
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">AI Interviewer Settings</h1>
@@ -262,19 +261,19 @@ export default function AISettingsPage() {
         onConfirm={confirmReset}
         onCancel={() => setShowResetModal(false)}
       />
-    </div>
+    </DashboardLayout>
   );
 }
 
 function Section({ title, desc, children }: { title: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-5 mb-4">
+    <section className="card p-6 mb-4">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-gray-900">{title}</h2>
         <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
       </div>
       <div className="space-y-3">{children}</div>
-    </div>
+    </section>
   );
 }
 

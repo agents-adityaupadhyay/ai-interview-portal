@@ -1,175 +1,190 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 import { agentBridge, useAgentChatEnabled } from "./agent/agent-bridge";
-
-const navItems = [
-  {
-    label: "Dashboard",
-    href: "/",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Question Bank",
-    href: "/questions",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-      </svg>
-    ),
-  },
-  {
-    label: "Compare",
-    href: "/compare",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-      </svg>
-    ),
-  },
-  {
-    label: "New Interview",
-    href: "/new",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-      </svg>
-    ),
-  },
-  {
-    label: "Email Templates",
-    href: "/templates",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-      </svg>
-    ),
-  },
-  {
-    label: "Team",
-    href: "/team",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-      </svg>
-    ),
-  },
-  {
-    label: "AI Settings",
-    href: "/settings/ai",
-    icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-  },
-];
+import { navGroups, NEW_INTERVIEW, isNavActive, NavIcon, BrandMark } from "./nav";
+import { CommandPalette, openCommandPalette } from "./CommandPalette";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const navRef = useRef<HTMLElement>(null);
+  const [isMac, setIsMac] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  const userInitial = session?.user?.name?.charAt(0)?.toUpperCase() || "U";
+  const userName = session?.user?.name || "User";
+  const userInitials = userName
+    .split(/\s+/)
+    .map((p) => p.charAt(0))
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "U";
   const isAdmin = (session?.user as any)?.role === "admin";
+  const orgName = (session?.user as any)?.orgName as string | undefined;
   // AI assistant launcher: only when AGENT_CHAT is on (see components/agent).
   const isAgentChatEnabled = useAgentChatEnabled();
-  const isMac = typeof navigator !== "undefined" && /mac/i.test(navigator.platform);
 
-  const isActive = (href: string, label: string) => {
-    if (label === "Dashboard") return pathname === "/" || pathname.startsWith("/dashboard");
-    if (label === "New Interview") return pathname === "/new";
-    return pathname === href || pathname.startsWith(href + "/");
-  };
+  useEffect(() => setIsMac(/mac/i.test(navigator.platform)), []);
 
+  // "N" starts a new interview from anywhere outside a text field.
   useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const handleScroll = () => setScrolled(nav.scrollTop > 0);
-    nav.addEventListener("scroll", handleScroll);
-    return () => nav.removeEventListener("scroll", handleScroll);
-  }, []);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "n" || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      e.preventDefault();
+      router.push(NEW_INTERVIEW.href);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [router]);
+
+  // Close the drawer on navigation.
+  useEffect(() => setMobileOpen(false), [pathname]);
+
+  // Mobile drawer behaves as a modal dialog: Esc closes, focus moves in and
+  // returns to the menu button, Tab stays inside, page behind doesn't scroll.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const drawer = drawerRef.current;
+    const focusables = () =>
+      Array.from(drawer?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])') || []);
+    focusables()[0]?.focus();
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    const menuButton = menuButtonRef.current;
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      menuButton?.focus();
+    };
+  }, [mobileOpen]);
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className={`px-6 py-5 border-b border-gray-200 transition-shadow duration-200 ${scrolled ? "shadow-sm" : ""}`}>
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-sm">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25z" />
-            </svg>
-          </div>
-          <div>
-            <span className="text-lg font-bold text-gray-900">InterviewAI</span>
-            <p className="text-[10px] text-gray-400 -mt-0.5 tracking-wide uppercase">AI-Powered Hiring</p>
-          </div>
+    <div className="flex h-full flex-col">
+      {/* Workspace */}
+      <div className="flex items-center gap-2.5 px-4 pb-3 pt-4">
+        <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-lg" aria-label="InterviewAI home">
+          <BrandMark className="h-7 w-7 rounded-lg" />
+          <span className="min-w-0 leading-tight">
+            <span className="block font-display text-[14px] font-semibold tracking-tight text-gray-900">InterviewAI</span>
+            <span className="block truncate text-[11px] text-gray-500">{orgName || "Hiring workspace"}</span>
+          </span>
+        </Link>
+      </div>
+
+      <div className="px-3 pb-2">
+        <Link
+          href={NEW_INTERVIEW.href}
+          aria-current={pathname === NEW_INTERVIEW.href ? "page" : undefined}
+          aria-keyshortcuts="N"
+          className="btn-primary w-full !justify-start !px-2.5 !py-1.5 text-[13px]"
+        >
+          <NavIcon d={NEW_INTERVIEW.icon} className="h-4 w-4" />
+          New interview
+          <kbd className="ml-auto rounded bg-white/15 px-1.5 font-mono text-[10px] text-gray-50/80" aria-hidden="true">N</kbd>
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav ref={navRef} className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.filter((item) => item.href !== "/settings/ai" || isAdmin).map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            onClick={() => setMobileOpen(false)}
-            className={isActive(item.href, item.label) ? "sidebar-link-active" : "sidebar-link"}
-          >
-            {item.icon}
-            {item.label}
-          </Link>
-        ))}
+      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 pb-4">
+        {navGroups.map((group) => {
+          const items = group.items.filter((i) => !i.adminOnly || isAdmin);
+          if (items.length === 0) return null;
+          return (
+            <div key={group.label} className="mt-5 first:mt-3">
+              <h2 className="px-2.5 pb-1 font-sans text-[11px] font-medium tracking-normal text-gray-400">{group.label}</h2>
+              <ul className="space-y-px">
+                {items.map((item) => {
+                  const active = isNavActive(pathname, item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        className={active ? "sidebar-link-active" : "sidebar-link"}
+                      >
+                        <NavIcon d={item.icon} className={`h-4 w-4 ${active ? "text-gray-900" : "text-gray-400"}`} />
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+
+        {isAgentChatEnabled && (
+          <div className="mt-5">
+            <h2 className="px-2.5 pb-1 font-sans text-[11px] font-medium tracking-normal text-gray-400">Assistant</h2>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false);
+                agentBridge.open("full");
+              }}
+              aria-keyshortcuts={isMac ? "Meta+J" : "Control+J"}
+              className="sidebar-link w-full"
+            >
+              <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              Ask AI
+              <kbd className="kbd ml-auto">{isMac ? "⌘J" : "Ctrl J"}</kbd>
+            </button>
+          </div>
+        )}
       </nav>
 
-      {/* AI assistant */}
-      {isAgentChatEnabled && (
-        <div className="px-3 pb-3">
+      {/* Theme + user */}
+      <div className="space-y-2 px-3 pb-3">
+        <ThemeToggle />
+        <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-900 font-mono text-[10px] font-medium text-gray-50"
+            aria-hidden="true"
+          >
+            {userInitials}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium text-gray-900">{userName}</p>
+            <p className="truncate text-[11px] text-gray-500">{session?.user?.email || ""}</p>
+          </div>
           <button
             type="button"
-            onClick={() => {
-              setMobileOpen(false);
-              agentBridge.open("full");
-            }}
-            className="group flex w-full items-center gap-3 rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2 text-sm font-medium text-indigo-700 transition-all duration-200 hover:border-indigo-200 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
-            </svg>
-            Ask AI
-            <kbd className="ml-auto rounded border border-indigo-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-indigo-500">
-              {isMac ? "⌘J" : "Ctrl J"}
-            </kbd>
-          </button>
-        </div>
-      )}
-
-      {/* Divider + User */}
-      <div className="border-t border-gray-200 px-3 py-4">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-semibold shadow-sm">
-            {userInitial}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{session?.user?.name || "User"}</p>
-            <p className="text-xs text-gray-500 truncate">{session?.user?.email || ""}</p>
-          </div>
-          <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+            aria-label="Sign out"
             title="Sign out"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
             </svg>
           </button>
@@ -180,36 +195,76 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg border border-gray-200 shadow-sm"
-      >
-        <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
-      </button>
+      {/* Mobile top bar */}
+      <header className="glass fixed inset-x-0 top-0 z-40 flex h-14 items-center gap-3 border-x-0 border-t-0 px-4 lg:hidden">
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="-ml-1 rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+          aria-label="Open navigation"
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-nav"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+          </svg>
+        </button>
+        <Link href="/" className="flex items-center gap-2" aria-label="InterviewAI home">
+          <BrandMark className="h-7 w-7" />
+          <span className="font-display text-base font-bold tracking-tight text-gray-900">InterviewAI</span>
+        </Link>
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          className="ml-auto rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+          aria-label="Search"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+        </button>
+      </header>
 
-      {/* Mobile overlay */}
+      {/* Mobile drawer */}
       <div
-        className={`lg:hidden fixed inset-0 z-40 transition-opacity duration-300 ${
-          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-50 lg:hidden ${mobileOpen ? "" : "pointer-events-none"}`}
+        aria-hidden={!mobileOpen}
       >
-        <div className="absolute inset-0 bg-black/20" onClick={() => setMobileOpen(false)} />
         <div
-          className={`absolute left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200 shadow-xl transition-transform duration-300 ease-out ${
-            mobileOpen ? "translate-x-0" : "-translate-x-full"
+          className={`absolute inset-0 bg-gray-950/40 backdrop-blur-sm transition-opacity duration-300 ${mobileOpen ? "opacity-100" : "opacity-0"}`}
+          onClick={() => setMobileOpen(false)}
+        />
+        <div
+          ref={drawerRef}
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+          className={`absolute bottom-0 left-0 top-0 w-72 border-r border-gray-200 bg-gray-100 dark:bg-gray-50 shadow-2xl transition-[transform,visibility] duration-300 ease-out ${
+            mobileOpen ? "translate-x-0" : "invisible -translate-x-full"
           }`}
         >
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="absolute right-3 top-4 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            aria-label="Close navigation"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
           {sidebarContent}
         </div>
       </div>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block fixed left-0 top-0 bottom-0 w-64 bg-white border-r border-gray-200">
+      <aside className="fixed bottom-0 left-0 top-0 z-30 hidden w-60 lg:block" aria-label="Sidebar">
         {sidebarContent}
-      </div>
+      </aside>
+
+      <CommandPalette isAdmin={isAdmin} agentEnabled={isAgentChatEnabled} />
     </>
   );
 }

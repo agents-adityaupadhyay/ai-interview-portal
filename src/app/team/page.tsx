@@ -105,8 +105,8 @@ export default function TeamPage() {
                   <circle cx="75" cy="45" r="14" stroke="currentColor" strokeWidth="2" />
                   <circle cx="75" cy="39" r="5" fill="currentColor" opacity="0.3" />
                   <path d="M63 58a12 12 0 0124 0" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.3" />
-                  <circle cx="95" cy="75" r="12" fill="#818cf8" opacity="0.15" stroke="#818cf8" strokeWidth="2" />
-                  <path d="M92 75h6M95 72v6" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
+                  <circle cx="95" cy="75" r="12" fill="currentColor" opacity="0.15" stroke="currentColor" className="text-indigo-400" strokeWidth="2" />
+                  <path d="M92 75h6M95 72v6" stroke="currentColor" className="text-indigo-400" strokeWidth="2" strokeLinecap="round" opacity="0.5" />
                 </svg>
                 <p className="text-xl font-semibold text-gray-900 mb-2">No team members yet</p>
                 <p className="text-gray-500 max-w-sm mx-auto">Team members will appear here once they register and join your organization.</p>

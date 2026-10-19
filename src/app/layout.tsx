@@ -1,9 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import { validateEnv } from "@/lib/env";
+import { themeInitScript } from "@/lib/theme-script";
 import "./globals.css";
 
 validateEnv();
+
+// Self-hosted at build time: no render-blocking request to Google at runtime.
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Headings: Inter Tight, the closest Google-hosted match to Inter Display.
+const display = Inter_Tight({ subsets: ["latin"], variable: "--font-display", display: "swap", weight: ["500", "600", "700"] });
+// Numbers, dates, IDs and shortcuts.
+const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap", weight: ["400", "500"] });
 
 export const metadata: Metadata = {
   title: {
@@ -16,13 +25,18 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-screen antialiased">
         <Providers>{children}</Providers>

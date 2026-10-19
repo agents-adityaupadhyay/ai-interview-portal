@@ -30,6 +30,7 @@ Set `DATABASE_URL` in `.env.local` to your database (for example a managed Postg
 ```bash
 psql "$DATABASE_URL" -f migrations/001_schema.sql
 psql "$DATABASE_URL" -f migrations/002_ai_settings.sql
+psql "$DATABASE_URL" -f migrations/003_agent_chat.sql
 docker compose --env-file .env.local up -d --build --no-deps app
 ```
 
@@ -44,6 +45,7 @@ npm install
 createdb ai_interview_platform
 psql -d ai_interview_platform -f migrations/001_schema.sql
 psql -d ai_interview_platform -f migrations/002_ai_settings.sql
+psql -d ai_interview_platform -f migrations/003_agent_chat.sql
 cp .env.example .env.local   # then fill it in
 npm run dev                  # http://localhost:3000
 ```

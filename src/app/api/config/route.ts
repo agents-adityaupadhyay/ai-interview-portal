@@ -18,6 +18,9 @@ export async function GET() {
     // Video recording (camera + mic)
     videoRecording: /^(1|true|on|yes)$/i.test(process.env.VIDEO_RECORDING || ""),
 
+    // Recruiter AI assistant (chat panel)
+    agentChat: /^(1|true|on|yes)$/i.test(process.env.AGENT_CHAT || ""),
+
     // App
     appUrl: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "",
     environment: process.env.NODE_ENV || "development",

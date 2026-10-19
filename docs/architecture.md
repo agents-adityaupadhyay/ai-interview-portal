@@ -27,6 +27,7 @@ One Next.js 14 app (App Router, TypeScript, Tailwind) serves both the UI and the
 | Scoring | `src/lib/scoring-tracker.ts`, `parse-scorecard.ts`, `normalize-scorecard.ts`, `scorecard-calc.ts` | Runs after the interview ends, repairs the model's JSON and computes scores using the organization's thresholds |
 | Data access | `src/lib/store.ts`, `src/lib/db.ts` | Interview types and queries |
 | Auth | `src/lib/auth.ts`, `src/middleware.ts`, `src/lib/auth-check.ts` | NextAuth credentials login for recruiters; candidates use the interview token |
+| AI assistant | `src/lib/agent/`, `src/components/agent-ui/`, `src/components/agent/` | Optional recruiter chat agent. Its tools call the app's own API routes with the recruiter's session, so it has exactly the recruiter's permissions. See [AI assistant](ai-assistant.md) |
 
 ## Interview lifecycle
 
@@ -34,7 +35,7 @@ One Next.js 14 app (App Router, TypeScript, Tailwind) serves both the UI and the
 2. **Join.** The candidate opens `/interview/[id]?token=…`. The room asks for camera, microphone, screen share and fullscreen.
 3. **Converse.** Each turn: candidate audio → STT over the WebSocket → `/api/ai-response` → TTS via `/api/ai-speak-stream` → audio played back.
 4. **Proctor.** `Proctoring` and `ScreenShare` post to `/api/proctor-event` and `/api/proctor-heartbeat`. Strikes are counted on the server, and the interview ends when the limit is reached.
-5. **Record (optional).** With `VIDEO_RECORDING=on`, `VideoRecorder` uploads 5-second chunks to `/api/video-chunk`. Each upload carries a byte `offset`, so retries never duplicate data. A resumed interview starts a new recording part.
+5. **Record (optional).** With `VIDEO_RECORDING=on`, `VideoRecorder` draws the shared screen on a canvas with the camera in a square corner box and mixes the microphone with the AI voice (each TTS clip is handed to it through `window.__recordAIAudio` before it plays). It uploads 5-second chunks to `/api/video-chunk`. Each upload carries a byte `offset`, so retries never duplicate data. A resumed interview starts a new recording part.
 6. **Score.** When the interview ends, scoring runs in the background. A database "claim" stops two servers from scoring the same interview, and a claim stuck for over 5 minutes is retried.
 7. **Review.** Recruiters see the transcript, scorecard, proctoring timeline, photos and video on `/dashboard/[id]` and `/review/[id]`.
 
@@ -49,7 +50,8 @@ One Next.js 14 app (App Router, TypeScript, Tailwind) serves both the UI and the
 | SQL injection | Parameterized queries everywhere |
 | File paths | IDs validated before touching disk |
 | Shell commands | Edge TTS runs through `execFile` with an argument list, no shell |
-| Rate limiting | Per-IP limits on AI, TTS and interview creation. Kept in memory, so limits are per server instance |
+| Rate limiting | Per-IP limits on AI, TTS and interview creation, per-user on assistant messages. Kept in memory, so limits are per server instance |
+| AI assistant | Acts only through the app's API as the signed-in recruiter; conversations are private to their owner; deletes and emails need the recruiter's approval in the chat |
 
 ## Storage
 

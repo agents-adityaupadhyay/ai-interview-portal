@@ -41,7 +41,18 @@
 | `POST` | `/api/tts` | Token | Text to speech |
 | `GET` | `/api/stt-proxy` | Token | Which STT provider is active |
 | `WS` | `/api/stt-ws` | Token | Live audio → transcript (production server only) |
-| `GET` | `/api/config` | Public | Client settings (strike limit, STT providers, video recording on/off) |
+| `GET` | `/api/config` | Public | Client settings (strike limit, STT providers, video recording and assistant on/off) |
+
+## AI assistant
+
+All return `404` when `AGENT_CHAT` is off. See [AI assistant](ai-assistant.md).
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
+| `POST` | `/api/agent/chat` | Session | Send a message (or approval/answer) and stream the reply (AI SDK UI message stream). Body: `{ threadId, trigger, message, pageContext }` |
+| `GET` | `/api/agent/threads` | Session | The user's 50 most recent conversations |
+| `GET` | `/api/agent/threads/[threadId]/messages` | Session | Messages of one of the user's conversations |
+| `DELETE` | `/api/agent/threads/[threadId]` | Session | Delete one of the user's conversations |
 
 ## Scoring, proctoring and recordings
 

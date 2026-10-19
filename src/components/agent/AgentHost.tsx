@@ -11,6 +11,7 @@ import {
   type PageContext,
 } from "@/components/agent-ui";
 import { agentBridge } from "./agent-bridge";
+import { useTheme } from "@/lib/theme";
 
 const SUGGESTIONS: AgentSuggestion[] = [
   {
@@ -67,6 +68,7 @@ export default function AgentHost() {
   pathnameRef.current = pathname;
 
   const firstName = session?.user?.name?.split(" ")[0];
+  const { resolved: resolvedTheme } = useTheme();
   // Stable identity: called on every send with the current route.
   const getPageContext = useCallback(() => pageContextFor(pathnameRef.current), []);
 
@@ -77,7 +79,7 @@ export default function AgentHost() {
       greeting={firstName ? `What are we hiring for today, ${firstName}?` : "What are we hiring for today?"}
       suggestions={SUGGESTIONS}
       getPageContext={getPageContext}
-      theme="light"
+      theme={resolvedTheme}
     >
       <BridgeConnector />
       <InAppLinks />

@@ -72,6 +72,8 @@ All return `404` when `AGENT_CHAT` is off. See [AI assistant](ai-assistant.md).
 |--------|-------|------|---------|
 | `GET` / `POST` | `/api/questions` | Session | Question banks |
 | `GET` / `PUT` / `DELETE` | `/api/questions/[id]` | Session | One question bank |
+| `POST` | `/api/questions/generate` | Session | Draft questions from a job description: multipart `file` (PDF/DOCX/TXT, max 5 MB) and/or `jdText`, plus `role`, `level`, `roundType`, `count` (3–20), `focus`, `existing` (JSON array to avoid repeats). Returns `{ name, role, level, questions, jdChars, truncated }`; saves nothing. 10/min per user |
+| `POST` | `/api/questions/[id]/answer` | Session | AI model answer for one question: body `{ index, question?, regenerate? }`, returns `{ answer, cached }` (markdown). Org-scoped, 20/min per user, cached in memory per process |
 | `GET` | `/api/email-templates` | Session | Email templates |
 | `POST` / `PUT` / `DELETE` | `/api/email-templates` | Admin | Manage email templates |
 | `GET` / `PUT` | `/api/settings/ai` | Admin | Organization AI settings |
